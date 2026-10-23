@@ -3,7 +3,7 @@
 
   # NOX FREE MINI BOT
 
-  [![Version](https://img.shields.io/badge/Version-1.0.0-green?style=for-the-badge)](https://github.com/Nox-Primeee/NOXFREEMINIBOT)
+  [![Version](https://img.shields.io/badge/Version-1.0.0-green?style=for-the-badge)](https://github.com/NoxCoreDev/NOXFREEMINIBOT)
   [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
   [![Node.js](https://img.shields.io/badge/Node.js-24.x-green?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
   [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-brightgreen?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
@@ -11,9 +11,9 @@
   [![Render](https://img.shields.io/badge/Render-Node%20guide-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com/docs/deploy-node-express-app)
   [![Railway](https://img.shields.io/badge/Railway-Node%20guide-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)](https://docs.railway.com/quick-start)
   [![Koyeb](https://img.shields.io/badge/Koyeb-Node%20guide-121212?style=for-the-badge)](https://www.koyeb.com/docs/deploy/express)
-  [![Fork this repository](https://img.shields.io/badge/Fork_this_repository-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Nox-Primeee/NOXFREEMINIBOT/fork)
+  [![Fork this repository](https://img.shields.io/badge/Fork_this_repository-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/NoxCoreDev/NOXFREEMINIBOT/fork)
 
-  <p><strong>An open-source WhatsApp multi-device bot built with Node.js and Baileys, featuring pairing-code setup, MongoDB-backed sessions, a web pairing page, and a modular plugin system for messaging, media, and group tools. Created by @Nox-Primeee.</strong></p>
+  <p><strong>An open-source WhatsApp multi-device bot built with Node.js and Baileys, featuring pairing-code setup, MongoDB-backed sessions, a web pairing page, and a modular plugin system for messaging, media, and group tools. Created by @NoxCoreDev.</strong></p>
 </div>
 
 ## About
@@ -35,8 +35,8 @@ NOX FREE MINI BOT is a multi-device WhatsApp bot built with [Baileys](https://gi
 
 | Resource | Link |
 | --- | --- |
-| Source code | [GitHub — NOXFREEMINIBOT](https://github.com/Nox-Primeee/NOXFREEMINIBOT) |
-| Fork this repository | [Create your own fork](https://github.com/Nox-Primeee/NOXFREEMINIBOT/fork) |
+| Source code | [GitHub — NOXFREEMINIBOT](https://github.com/NoxCoreDev/NOXFREEMINIBOT) |
+| Fork this repository | [Create your own fork](https://github.com/NoxCoreDev/NOXFREEMINIBOT/fork) |
 | WhatsApp library | [Baileys — WhiskeySockets](https://github.com/WhiskeySockets/Baileys) |
 | Node.js 24.x | [Node.js downloads](https://nodejs.org/) |
 | Database | [MongoDB Atlas](https://www.mongodb.com/atlas) |
@@ -58,7 +58,7 @@ The application serves its pairing page at `/` and its health response at `/ping
 ## Local installation
 
 ```bash
-git clone https://github.com/Nox-Primeee/NOXFREEMINIBOT.git
+git clone https://github.com/NoxCoreDev/NOXFREEMINIBOT.git
 cd NOXFREEMINIBOT
 npm install
 cp .env.example .env
@@ -180,7 +180,7 @@ A pairing code and session provide access to the associated WhatsApp account. Do
 [![Twitter/X](https://img.shields.io/badge/Twitter-@noxprimeeeinc-000000?style=for-the-badge&logo=x&logoColor=white)](https://twitter.com/noxprimeeeinc)
 [![YouTube](https://img.shields.io/badge/YouTube-@noxprimeeeinc-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtube.com/@noxprimeeeinc)
 [![WhatsApp](https://img.shields.io/badge/WhatsApp-Channel-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://whatsapp.com/channel/0029VbDIn9u47Xe6gf8JxP3c)
-[![GitHub](https://img.shields.io/badge/GitHub-Nox--Primeee-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Nox-Primeee)
+[![GitHub](https://img.shields.io/badge/GitHub-Nox--Primeee-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/NoxCoreDev)
 
 ---
 
