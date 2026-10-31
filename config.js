@@ -1,5 +1,5 @@
 
-//══════════════════════════════//
+//═══════════FREE MINIBOT═══════════════════//
 const fs = require('fs');
 const dotenv = require('dotenv');
 const path = require('path');
