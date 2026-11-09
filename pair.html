@@ -1,542 +1,310 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b1530" />
-  <meta name="description" content="NOX FREE MINI BOT WhatsApp pairing portal." />
-  <title>{{BOT_NAME}} — WhatsApp Pairing</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --night: #0a142c;
-      --night-2: #101e3c;
-      --surface: rgba(23, 37, 69, .86);
-      --surface-2: #172746;
-      --surface-3: #1c2d4e;
-      --line: rgba(181, 202, 241, .12);
-      --text: #f5f8ff;
-      --muted: #a1aec7;
-      --blue: #4388f5;
-      --blue-2: #2f70de;
-      --lime: #c8f647;
-      --lime-ink: #16210b;
-      --danger: #ff8589;
-      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      --shadow: 0 24px 70px rgba(0, 0, 0, .26);
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080808">
+<title>{{BOT_NAME}} — Pair WhatsApp</title>
 
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: 28px; }
-    body {
-      margin: 0;
-      min-width: 320px;
-      min-height: 100vh;
-      min-height: 100svh;
-      padding: 0 28px 118px;
-      overflow-x: hidden;
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        radial-gradient(ellipse at 13% 6%, rgba(55, 115, 225, .24), transparent 34rem),
-        radial-gradient(ellipse at 92% 35%, rgba(91, 139, 240, .1), transparent 28rem),
-        linear-gradient(155deg, #111f40 0%, var(--night) 55%, #0a1329 100%);
-    }
+<style>
+:root {
+  --red:#ff1010;
+  --black:#080808;
+  --panel:#151515;
+  --white:#fff;
+  --muted:#aaa;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;min-height:100vh;background:
+  radial-gradient(circle at 50% 0%,#3b0000 0,transparent 38%),
+  linear-gradient(145deg,#080808,#130000 55%,#050505);
+  color:var(--white);font-family:Arial, sans-serif;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;
+  opacity:.18;background-image:
+  linear-gradient(rgba(255,0,0,.12) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(255,0,0,.12) 1px,transparent 1px);
+  background-size:45px 45px;
+  mask-image:linear-gradient(to bottom,black,transparent);
+}
+#intro{
+  position:fixed;inset:0;z-index:1000;background:#050505;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;text-align:center;
+  animation:introOut 1s ease 2.8s forwards;
+}
+.intro-logo{
+  font-size:clamp(32px,8vw,65px);font-weight:1000;
+  letter-spacing:5px;color:white;
+  text-shadow:0 0 12px red,0 0 35px red;
+  animation:logoReveal 1.4s ease both;
+}
+.intro-line{
+  width:0;height:3px;margin-top:22px;
+  background:var(--red);box-shadow:0 0 20px red;
+  animation:lineGrow 1.4s ease .3s forwards;
+}
+.intro-caption{
+  margin-top:18px;color:#ff4444;letter-spacing:5px;
+  font-size:11px;animation:fadeUp 1s ease .6s both;
+}
+@keyframes logoReveal{
+  from{opacity:0;transform:scale(.55);filter:blur(15px)}
+  to{opacity:1;transform:scale(1);filter:blur(0)}
+}
+@keyframes lineGrow{to{width:min(300px,70vw)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+@keyframes introOut{to{opacity:0;visibility:hidden;pointer-events:none}}
+@keyframes float{50%{transform:translateY(-18px)}}
+@keyframes pulse{50%{box-shadow:0 0 35px #ff1010}}
+@keyframes reveal{from{opacity:0;transform:translateY(25px)}to{opacity:1;transform:translateY(0)}}
 
-    a { color: inherit; }
-    button, input { font: inherit; }
-    .shell { width: min(1120px, 100%); margin-inline: auto; }
+.particles{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.particles i{
+  position:absolute;bottom:-20px;width:3px;height:3px;
+  border-radius:50%;background:#ff1717;box-shadow:0 0 12px red;
+  animation:rise linear infinite;
+}
+@keyframes rise{to{transform:translateY(-110vh);opacity:0}}
 
-    .topbar {
-      min-height: 88px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-      border-bottom: 1px solid var(--line);
-    }
-    .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; }
-    .brand-mark {
-      width: 42px;
-      height: 42px;
-      display: grid;
-      place-items: center;
-      border-radius: 14px;
-      color: #fff;
-      font-size: 20px;
-      font-weight: 850;
-      letter-spacing: -.08em;
-      background: linear-gradient(145deg, #5aa1ff, #3474e5);
-      box-shadow: 0 8px 24px rgba(59, 124, 236, .32), inset 0 1px rgba(255,255,255,.3);
-    }
-    .brand-copy { display: grid; gap: 2px; }
-    .brand-name { font-size: 13px; font-weight: 800; letter-spacing: .12em; }
-    .brand-caption { color: var(--muted); font-size: 10px; letter-spacing: .15em; text-transform: uppercase; }
-    .top-nav { display: flex; align-items: center; gap: 30px; }
-    .top-nav a {
-      color: #c2cde1;
-      font-size: 13px;
-      font-weight: 650;
-      text-decoration: none;
-      transition: color .18s ease;
-    }
-    .top-nav a:hover, .top-nav a:focus-visible { color: var(--lime); }
-    .top-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 9px;
-      padding: 10px 14px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: rgba(255,255,255,.035);
-      color: #d6e1f5;
-      font-size: 11px;
-      font-weight: 750;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-    .top-label svg { width: 15px; height: 15px; color: var(--lime); }
-
-    .hero {
-      display: grid;
-      grid-template-columns: minmax(0, .94fr) minmax(390px, 1.06fr);
-      align-items: center;
-      gap: clamp(42px, 8vw, 104px);
-      padding: clamp(58px, 9vw, 112px) 0 76px;
-    }
-    .intro { max-width: 500px; }
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      margin: 0 0 20px;
-      color: var(--lime);
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .16em;
-      text-transform: uppercase;
-    }
-    .eyebrow::before {
-      content: "";
-      width: 25px;
-      height: 2px;
-      border-radius: 3px;
-      background: var(--lime);
-      box-shadow: 0 0 14px rgba(200, 246, 71, .55);
-    }
-    h1 {
-      max-width: 560px;
-      margin: 0;
-      font-size: clamp(42px, 5.5vw, 68px);
-      line-height: .99;
-      letter-spacing: -.065em;
-      font-weight: 820;
-    }
-    h1 span { color: #78aaff; }
-    .intro-copy {
-      max-width: 440px;
-      margin: 23px 0 28px;
-      color: #aebbd2;
-      font-size: 16px;
-      line-height: 1.75;
-    }
-    .micro-note { display: flex; align-items: flex-start; gap: 11px; color: #c0cce1; font-size: 12px; line-height: 1.6; }
-    .micro-note svg { width: 17px; height: 17px; flex: 0 0 auto; margin-top: 1px; color: var(--lime); }
-
-    .pair-card {
-      position: relative;
-      overflow: hidden;
-      padding: clamp(25px, 4vw, 38px);
-      border: 1px solid rgba(191, 211, 247, .16);
-      border-radius: 28px;
-      background: linear-gradient(148deg, rgba(29, 47, 84, .97), rgba(18, 32, 61, .96));
-      box-shadow: var(--shadow), inset 0 1px rgba(255,255,255,.07);
-    }
-    .pair-card::before {
-      content: "";
-      position: absolute;
-      width: 260px;
-      height: 260px;
-      top: -165px;
-      right: -75px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(65, 135, 246, .2), transparent 70%);
-      pointer-events: none;
-    }
-    .card-head { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 30px; }
-    .card-kicker { margin: 0 0 7px; color: #91b7ff; font-family: var(--mono); font-size: 10px; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
-    .card-title { margin: 0; font-size: 23px; font-weight: 760; letter-spacing: -.04em; }
-    .card-icon {
-      width: 48px;
-      height: 48px;
-      display: grid;
-      place-items: center;
-      flex: 0 0 auto;
-      border: 1px solid rgba(140, 184, 255, .2);
-      border-radius: 16px;
-      background: rgba(65, 135, 246, .14);
-      color: #8cb8ff;
-    }
-    .card-icon svg { width: 23px; height: 23px; }
-    .field-label { display: block; margin-bottom: 10px; color: #c3cfe4; font-size: 12px; font-weight: 680; }
-    .input-wrap { position: relative; }
-    .input-wrap svg { position: absolute; top: 50%; left: 16px; width: 19px; height: 19px; color: #8fa3c4; transform: translateY(-50%); pointer-events: none; }
-    input[type="text"] {
-      width: 100%;
-      min-height: 58px;
-      padding: 0 16px 0 48px;
-      border: 1px solid rgba(181, 202, 241, .17);
-      border-radius: 15px;
-      outline: none;
-      background: rgba(7, 17, 38, .54);
-      color: var(--text);
-      font-family: var(--mono);
-      font-size: 15px;
-      letter-spacing: .015em;
-      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-    }
-    input[type="text"]::placeholder { color: #71809d; }
-    input[type="text"]:focus { border-color: #5796ff; background: rgba(7,17,38,.78); box-shadow: 0 0 0 4px rgba(67,136,245,.15); }
-    .submit-btn {
-      width: 100%;
-      min-height: 58px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 11px;
-      margin-top: 15px;
-      border: 0;
-      border-radius: 15px;
-      background: linear-gradient(110deg, #4c96ff, #3579eb);
-      box-shadow: 0 12px 28px rgba(48, 112, 222, .27), inset 0 1px rgba(255,255,255,.25);
-      color: #fff;
-      font-size: 14px;
-      font-weight: 780;
-      letter-spacing: .01em;
-      cursor: pointer;
-      transition: filter .18s ease, transform .14s ease;
-    }
-    .submit-btn svg { width: 18px; height: 18px; }
-    .submit-btn:hover { filter: brightness(1.08); }
-    .submit-btn:active { transform: scale(.99); }
-    .submit-btn:focus-visible, .copy-btn:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; }
-    .submit-btn:disabled { opacity: .55; cursor: wait; }
-    .request-note { display: flex; gap: 8px; align-items: flex-start; margin: 15px 0 0; color: #94a4c1; font-size: 11px; line-height: 1.55; }
-    .request-note svg { width: 14px; height: 14px; flex: 0 0 auto; margin-top: 1px; color: var(--lime); }
-
-    .result { display: none; margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
-    .result.visible { display: block; }
-    .result-label { margin: 0 0 10px; color: #b8c6df; font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
-    .code-wrapper { display: flex; align-items: center; gap: 10px; padding: 7px 7px 7px 16px; border: 1px solid rgba(200,246,71,.25); border-radius: 15px; background: rgba(200,246,71,.08); }
-    .code { flex: 1; color: var(--lime); font-family: var(--mono); font-size: clamp(21px, 5vw, 28px); font-weight: 800; letter-spacing: .12em; text-align: center; }
-    .copy-btn { width: 46px; height: 46px; flex: 0 0 auto; display: grid; place-items: center; border: 0; border-radius: 11px; background: rgba(200,246,71,.16); color: var(--lime); font-size: 20px; cursor: pointer; transition: background .16s ease, transform .12s ease; }
-    .copy-btn:hover { background: rgba(200,246,71,.26); }
-    .copy-btn:active { transform: scale(.94); }
-    .copy-feedback { height: 18px; margin: 7px 2px 0; color: var(--lime); font-size: 11px; text-align: right; opacity: 0; transition: opacity .18s ease; }
-    .copy-feedback.visible { opacity: 1; }
-    .error { display: none; margin: 14px 0 0; padding: 12px 14px; border: 1px solid rgba(255,133,137,.24); border-radius: 12px; background: rgba(255,133,137,.08); color: var(--danger); font-size: 12px; line-height: 1.5; }
-    .error.visible { display: block; }
-
-    .steps-section { padding: 0 0 74px; }
-    .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
-    .section-kicker { margin: 0 0 8px; color: var(--lime); font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
-    .section-heading h2 { margin: 0; font-size: clamp(22px, 3vw, 30px); letter-spacing: -.045em; }
-    .section-heading > p { max-width: 320px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
-    .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .step-card { min-height: 135px; padding: 21px 22px; border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(145deg, rgba(29,47,82,.72), rgba(18,32,60,.68)); }
-    .step-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-    .step-number { color: #91b7ff; font-family: var(--mono); font-size: 11px; font-weight: 750; letter-spacing: .12em; }
-    .step-top svg { width: 18px; height: 18px; color: var(--lime); }
-    .step-card h3 { margin: 0 0 5px; font-size: 14px; font-weight: 740; }
-    .step-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
-
-    .site-footer { padding: 26px 0 12px; border-top: 1px solid var(--line); }
-    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 25px; }
-    .footer-title { margin: 0 0 6px; color: #d9e3f4; font-size: 12px; font-weight: 760; }
-    .footer-copy { margin: 0; color: #7f8eaa; font-family: var(--mono); font-size: 9px; letter-spacing: .07em; }
-    .footer-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin: 0; padding: 0; list-style: none; }
-    .footer-links a { width: 42px; height: 42px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.035); color: #c5d1e7; text-decoration: none; transition: border-color .16s ease, color .16s ease, background .16s ease, transform .16s ease; }
-    .footer-links a svg { width: 19px; height: 19px; display: block; }
-    .footer-links a:hover, .footer-links a:focus-visible { border-color: rgba(200,246,71,.45); background: rgba(200,246,71,.08); color: var(--lime); }
-    .footer-links a:hover { transform: translateY(-2px); }
-
-    .bottom-nav {
-      position: fixed;
-      z-index: 10;
-      left: 50%;
-      bottom: max(18px, env(safe-area-inset-bottom));
-      width: min(370px, calc(100vw - 32px));
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 5px;
-      padding: 7px;
-      border: 1px solid rgba(207,220,244,.14);
-      border-radius: 22px;
-      background: rgba(13, 25, 49, .88);
-      box-shadow: 0 16px 45px rgba(0,0,0,.4), inset 0 1px rgba(255,255,255,.06);
-      backdrop-filter: blur(18px);
-      transform: translateX(-50%);
-    }
-    .bottom-nav a { min-height: 51px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 15px; color: #a7b4cc; font-size: 9px; font-weight: 700; text-decoration: none; transition: color .16s ease, background .16s ease; }
-    .bottom-nav a svg { width: 17px; height: 17px; }
-    .bottom-nav a:hover, .bottom-nav a:focus-visible { color: var(--lime); }
-    .bottom-nav a.primary { color: var(--lime-ink); background: var(--lime); box-shadow: 0 6px 18px rgba(200,246,71,.2); }
-    .bottom-nav a.primary:hover { color: #101906; filter: brightness(1.06); }
-    :focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
-
-    @media (min-width: 1300px) { body { padding-top: 0; } }
-    @media (max-width: 800px) {
-      body { padding-inline: 22px; }
-      .topbar { min-height: 76px; }
-      .top-nav { gap: 18px; }
-      .top-nav a { font-size: 12px; }
-      .hero { grid-template-columns: minmax(0, .9fr) minmax(340px, 1.1fr); gap: 34px; padding-top: 66px; }
-      h1 { font-size: clamp(40px, 6vw, 58px); }
-      .footer-inner { align-items: flex-start; flex-direction: column; }
-      .footer-links { justify-content: flex-start; }
-    }
-    @media (max-width: 640px) {
-      body { padding: 0 16px calc(106px + env(safe-area-inset-bottom)); background:
-        radial-gradient(ellipse at 15% 0%, rgba(55,115,225,.25), transparent 27rem),
-        linear-gradient(160deg, #111f40, #0a142c 57%, #091326); }
-      .topbar { min-height: 70px; }
-      .brand-mark { width: 38px; height: 38px; border-radius: 13px; }
-      .brand-name { font-size: 11px; }
-      .brand-caption { font-size: 9px; }
-      .top-nav { display: none; }
-      .top-label { padding: 9px 11px; font-size: 9px; }
-      .hero { grid-template-columns: 1fr; gap: 28px; padding: 43px 0 53px; }
-      .intro { max-width: none; }
-      .eyebrow { margin-bottom: 15px; font-size: 9px; }
-      h1 { max-width: 410px; font-size: clamp(42px, 12vw, 58px); }
-      .intro-copy { margin: 16px 0 15px; font-size: 14px; line-height: 1.65; }
-      .micro-note { font-size: 11px; }
-      .pair-card { padding: 23px 20px; border-radius: 23px; }
-      .card-head { margin-bottom: 24px; }
-      .card-title { font-size: 21px; }
-      .steps-section { padding-bottom: 48px; }
-      .section-heading { align-items: flex-start; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-      .section-heading > p { max-width: 450px; }
-      .steps-grid { grid-template-columns: 1fr; gap: 9px; }
-      .step-card { min-height: auto; display: grid; grid-template-columns: 30px 1fr; column-gap: 13px; padding: 15px 16px; border-radius: 16px; }
-      .step-top { grid-row: span 2; flex-direction: column; align-items: flex-start; justify-content: space-between; margin: 0; }
-      .step-card h3 { align-self: end; }
-      .step-card p { align-self: start; }
-      .site-footer { padding-top: 21px; }
-      .footer-inner { gap: 16px; }
-      .footer-links { gap: 7px; }
-      .footer-links a { min-height: 34px; padding: 7px 10px; font-size: 10px; }
-      .bottom-nav { bottom: max(13px, env(safe-area-inset-bottom)); }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
-    }
-  </style>
+.container{position:relative;z-index:1;width:min(900px,92%);margin:auto}
+header{
+  padding:24px 0;border-bottom:1px solid #ffffff18;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.brand{font-weight:1000;letter-spacing:2px;font-size:18px}
+.brand span{color:var(--red);text-shadow:0 0 15px red}
+.status{font-size:11px;color:#ff5555;letter-spacing:2px}
+.hero{text-align:center;padding:75px 0 35px;animation:reveal 1s ease 2.9s both}
+.tag{color:#ff3434;font-size:11px;letter-spacing:5px;font-weight:bold}
+h1{font-size:clamp(35px,8vw,65px);margin:18px 0;line-height:1.05}
+h1 span{color:var(--red);text-shadow:0 0 25px #ff101077}
+.subtitle{color:var(--muted);line-height:1.7;max-width:520px;margin:0 auto}
+.card{
+  width:min(480px,100%);margin:25px auto 70px;padding:30px;
+  background:linear-gradient(145deg,#1b1b1b,#0c0c0c);
+  border:1px solid #ff17174d;border-radius:20px;
+  box-shadow:0 15px 60px #000,0 0 25px #ff000018;
+  animation:reveal 1s ease 3.1s both;
+}
+.card h2{text-align:center;margin:0 0 25px;font-size:23px}
+label{display:block;font-size:12px;color:#ccc;margin-bottom:10px}
+input{
+  width:100%;height:55px;padding:0 15px;border-radius:10px;
+  border:1px solid #444;background:#080808;color:white;
+  outline:none;font-size:16px;
+}
+input:focus{border-color:var(--red);box-shadow:0 0 15px #ff101033}
+button{
+  width:100%;height:55px;margin-top:15px;border:0;border-radius:10px;
+  color:white;background:linear-gradient(100deg,#a90000,#ff1010);
+  font-size:14px;font-weight:bold;letter-spacing:1px;cursor:pointer;
+  box-shadow:0 5px 25px #ff101044;transition:.2s;
+}
+button:hover{transform:translateY(-2px);box-shadow:0 0 30px #ff101088}
+button:disabled{opacity:.5;cursor:wait}
+#result{display:none;margin-top:25px;text-align:center}
+#result.show{display:block}
+.code{
+  margin-top:12px;padding:20px 10px;border:1px solid var(--red);
+  border-radius:10px;color:#ff3333;background:#220000;
+  font-size:26px;font-weight:bold;letter-spacing:5px;
+  overflow-wrap:anywhere;
+}
+#error{display:none;color:#ff7777;margin-top:15px;font-size:13px}
+#error.show{display:block}
+.note{font-size:11px;color:#888;text-align:center;line-height:1.6;margin-top:18px}
+.steps{padding:15px 0 65px;text-align:center}
+.steps h2{font-size:25px}
+.steps p{color:#999;font-size:13px;line-height:1.8}
+footer{text-align:center;border-top:1px solid #ffffff18;padding:25px;color:#777;font-size:11px}
+@media(max-width:550px){
+  .hero{padding-top:55px}
+  .card{padding:23px 18px}
+  header{padding:20px 0}
+}
+</style>
 </head>
+
 <body>
-  <div class="shell">
-    <header class="topbar">
-      <a class="brand" href="#top" aria-label="NOX FREE MINI BOT home">
-        <span class="brand-mark" aria-hidden="true">N</span>
-        <span class="brand-copy">
-          <span class="brand-name">NOX FREE MINI BOT</span>
-          <span class="brand-caption">WhatsApp pairing</span>
-        </span>
-      </a>
-      <nav class="top-nav" aria-label="Main navigation">
-        <a href="#pairing">Pair a device</a>
-        <a href="#steps">How it works</a>
-        <a href="#footer">Social profiles</a>
-      </nav>
-      <span class="top-label">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5 14 8l4.8.6-3.5 3.3.9 4.8-4.2-2.4-4.2 2.4.9-4.8-3.5-3.3L11 8l1-4.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-        Pairing portal
-      </span>
-    </header>
+<div id="intro">
+  <div class="intro-logo">SCANTY MD BOT</div>
+  <div class="intro-line"></div>
+  <div class="intro-caption">NEXT GENERATION WHATSAPP BOT</div>
+</div>
 
-    <main id="top">
-      <section class="hero" aria-labelledby="page-title">
-        <div class="intro">
-          <p class="eyebrow">WhatsApp device setup</p>
-          <h1 id="page-title">Connect your <span>WhatsApp</span> account.</h1>
-          <p class="intro-copy">Enter the phone number you want to pair. When the request succeeds, your pairing code will appear here.</p>
-          <p class="micro-note">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Use the full number with its country code, including the leading + sign.
-          </p>
-        </div>
+<div class="particles" id="particles"></div>
 
-        <section class="pair-card" id="pairing" aria-labelledby="pair-card-title">
-          <div class="card-head">
-            <div>
-              <p class="card-kicker">Device pairing</p>
-              <h2 class="card-title" id="pair-card-title">Request a pairing code</h2>
-            </div>
-            <span class="card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M7.4 19.2 4 20l.9-3.2A8 8 0 1 1 7.4 19.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 8.8c.5 2.1 2.1 3.7 4.2 4.2l1.1-1.1 2.1 1.1-.3 2a1.2 1.2 0 0 1-1.3 1c-4.3-.5-7.1-3.3-7.6-7.6a1.2 1.2 0 0 1 1-1.3l2-.3 1.1 2.1L9 8.8Z" fill="currentColor"/></svg>
-            </span>
-          </div>
+<div class="container">
+<header>
+  <div class="brand"><span>SCANTY</span> MD BOT</div>
+  <div class="status">● SYSTEM ONLINE</div>
+</header>
 
-          <label class="field-label" for="phone">Phone number with country code</label>
-          <div class="input-wrap">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.2 3.5h9.6A1.7 1.7 0 0 1 18.5 5v14a1.7 1.7 0 0 1-1.7 1.5H7.2A1.7 1.7 0 0 1 5.5 19V5a1.7 1.7 0 0 1 1.7-1.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M10 17.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-            <input type="text" id="phone" placeholder="+15551234567" inputmode="tel" autocomplete="tel" aria-describedby="number-hint" />
-          </div>
-          <span id="number-hint" class="request-note">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5 19 6v5.3c0 4.3-2.8 7.5-7 9.2-4.2-1.7-7-4.9-7-9.2V6l7-2.5Z" stroke="currentColor" stroke-width="1.7"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            The pairing request is sent only after you select the button below.
-          </span>
+<main>
+<section class="hero">
+  <div class="tag">WHATSAPP CONNECTION PORTAL</div>
+  <h1>CONNECT YOUR<br><span>WHATSAPP</span></h1>
+  <p class="subtitle">
+    Connect your WhatsApp account to SCANTY MD BOT.
+    Enter your full phone number with country code to receive your pairing code.
+  </p>
+</section>
 
-          <button class="submit-btn" id="submitBtn" type="button">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Get pairing code
-          </button>
+<section class="card">
+  <h2>PAIR YOUR DEVICE</h2>
+  <label for="phone">PHONE NUMBER WITH COUNTRY CODE</label>
+  <input id="phone" type="tel" inputmode="tel"
+    autocomplete="tel" placeholder="233XXXXXXXXX">
 
-          <div class="error" id="errorBox" role="alert" aria-live="polite"></div>
+  <button id="submitBtn" type="button">GENERATE PAIRING CODE</button>
 
-          <div class="result" id="resultBox" aria-live="polite">
-            <p class="result-label">Your pairing code</p>
-            <div class="code-wrapper">
-              <div class="code" id="codeValue">— — — — — — — —</div>
-              <button class="copy-btn" id="copyBtn" type="button" title="Copy pairing code" aria-label="Copy pairing code">⧉</button>
-            </div>
-            <div class="copy-feedback" id="copyFeedback">Copied to clipboard</div>
-          </div>
-        </section>
-      </section>
+  <div id="error" role="alert"></div>
 
-      <section class="steps-section" id="steps" aria-labelledby="steps-title">
-        <div class="section-heading">
-          <div>
-            <p class="section-kicker">A simple process</p>
-            <h2 id="steps-title">Pair in a few steps</h2>
-          </div>
-          <p>Keep your WhatsApp app available while you request and use the code.</p>
-        </div>
-        <div class="steps-grid">
-          <article class="step-card">
-            <div class="step-top"><span class="step-number">01</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.2 3.5h9.6A1.7 1.7 0 0 1 18.5 5v14a1.7 1.7 0 0 1-1.7 1.5H7.2A1.7 1.7 0 0 1 5.5 19V5a1.7 1.7 0 0 1 1.7-1.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M10 17.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
-            <h3>Enter your number</h3>
-            <p>Include the country code for the account you want to pair.</p>
-          </article>
-          <article class="step-card">
-            <div class="step-top"><span class="step-number">02</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <h3>Request a code</h3>
-            <p>Select the button and wait for the pairing service response.</p>
-          </article>
-          <article class="step-card">
-            <div class="step-top"><span class="step-number">03</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <h3>Use your pairing code</h3>
-            <p>Follow the instructions in WhatsApp to complete device pairing.</p>
-          </article>
-        </div>
-      </section>
-
-      <footer class="site-footer" id="footer" aria-label="Official developer links">
-        <div class="footer-inner">
-          <div>
-            <h2 class="footer-title">Find NOX PRIMEe online</h2>
-            <p class="footer-copy">© NOX PRIMEe · NOX FREE MINI BOT</p>
-          </div>
-          <nav aria-label="Social profiles">
-            <ul class="footer-links">
-              <li><a href="https://t.me/nox_chh" target="_blank" rel="noopener noreferrer" aria-label="Telegram profile"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M21.7 4.4 18.5 20c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.3-8.4c.4-.4-.1-.6-.6-.2L6 13.5l-5-1.6c-1.1-.3-1.1-1.1.2-1.6l19.4-7.5c.9-.3 1.6.2 1.1 1.6Z"/></svg></a></li>
-              <li><a href="https://instagram.com/noxprimeeeinc" target="_blank" rel="noopener noreferrer" aria-label="Instagram profile"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.1" stroke="currentColor" stroke-width="1.8"/><circle cx="17.7" cy="6.5" r="1.1" fill="currentColor"/></svg></a></li>
-              <li><a href="https://twitter.com/noxprimeeeinc" target="_blank" rel="noopener noreferrer" aria-label="X / Twitter profile"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M18.9 3.4h3.1l-6.8 7.8 8 9.4h-6.3l-4.9-6-5.3 6H3.5l7.3-8.4-7.7-8.8h6.5l4.4 5.5 4.9-5.5Zm-1.1 15.6h1.7L8.2 5h-1.8l11.4 14Z"/></svg></a></li>
-              <li><a href="https://youtube.com/@noxprimeeeinc" target="_blank" rel="noopener noreferrer" aria-label="YouTube channel"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M21 7.2a2.8 2.8 0 0 0-2-2C17.3 4.7 12 4.7 12 4.7s-5.3 0-7 .5a2.8 2.8 0 0 0-2 2A29 29 0 0 0 2.5 12a29 29 0 0 0 .5 4.8 2.8 2.8 0 0 0 2 2c1.7.5 7 .5 7 .5s5.3 0 7-.5a2.8 2.8 0 0 0 2-2 29 29 0 0 0 .5-4.8 29 29 0 0 0-.5-4.8Z" stroke="currentColor" stroke-width="1.7"/><path d="m10 8.8 5.3 3.2-5.3 3.2V8.8Z" fill="currentColor"/></svg></a></li>
-              <li><a href="https://whatsapp.com/channel/0029VbDIn9u47Xe6gf8JxP3c" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp channel"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M20.2 11.8a8.2 8.2 0 0 1-12.1 7.3L3 20l1-4.9a8.2 8.2 0 1 1 16.2-3.3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.7 8.3c.4 2.2 2.2 4 4.4 4.5l1-1.1 2.1 1.1-.3 1.8c-.1.6-.7.9-1.2.8-3.7-.6-6.1-3-6.6-6.7-.1-.5.2-1.1.8-1.2l1.8-.3 1.1 2.1-1.1 1Z" fill="currentColor"/></svg></a></li>
-              <li><a href="https://github.com/NoxCoreDev" target="_blank" rel="noopener noreferrer" aria-label="GitHub profile"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .9a11.1 11.1 0 0 0-3.5 21.6c.6.1.8-.3.8-.6v-2.1c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.6-1.3-1.6-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 .1 2.1.8 2.6 1.2.1-.7.4-1.2.7-1.5-2.6-.3-5.3-1.3-5.3-5.9 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.6-2.7 5.6-5.3 5.9.4.3.8 1 .8 2v3c0 .3.2.7.8.6A11.1 11.1 0 0 0 12 .9Z"/></svg></a></li>
-            </ul>
-          </nav>
-        </div>
-      </footer>
-    </main>
+  <div id="result">
+    <label>YOUR WHATSAPP PAIRING CODE</label>
+    <div class="code" id="codeValue">--------</div>
+    <button id="copyBtn" type="button">COPY PAIRING CODE</button>
   </div>
 
-  <nav class="bottom-nav" aria-label="Quick navigation">
-    <a href="#pairing" class="primary">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7.4 19.2 4 20l.9-3.2A8 8 0 1 1 7.4 19.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-      <span>Pair</span>
-    </a>
-    <a href="#steps">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <span>Guide</span>
-    </a>
-    <a href="#footer">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5 14 8l4.8.6-3.5 3.3.9 4.8-4.2-2.4-4.2 2.4.9-4.8-3.5-3.3L11 8l1-4.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-      <span>Profiles</span>
-    </a>
-  </nav>
+  <p class="note">
+    Open WhatsApp → Linked devices → Link a device →
+    Link with phone number instead.
+  </p>
+</section>
 
-  <script>
-    const btn = document.getElementById("submitBtn");
-    const phoneInput = document.getElementById("phone");
-    const resultBox = document.getElementById("resultBox");
-    const codeValue = document.getElementById("codeValue");
-    const errorBox = document.getElementById("errorBox");
-    const copyBtn = document.getElementById("copyBtn");
-    const copyFeedback = document.getElementById("copyFeedback");
+<section class="steps">
+  <h2>HOW TO CONNECT</h2>
+  <p>01 — Enter your WhatsApp number with country code.</p>
+  <p>02 — Generate your pairing code.</p>
+  <p>03 — Enter the code inside WhatsApp Linked Devices.</p>
+</section>
+</main>
 
-    btn.addEventListener("click", async () => {
-        const number = phoneInput.value.trim();
-        errorBox.classList.remove("visible");
-        resultBox.classList.remove("visible");
-        copyFeedback.classList.remove("visible");
+<footer>© SCANTY MD BOT · POWERED FOR WHATSAPP</footer>
+</div>
 
-        if (!number) {
-            errorBox.textContent = "Please enter a phone number.";
-            errorBox.classList.add("visible");
-            return;
-        }
+<script>
+const intro = document.getElementById("intro");
+const particles = document.getElementById("particles");
 
-        btn.disabled = true;
-        btn.textContent = "Requesting...";
+for(let i=0;i<35;i++){
+  const p=document.createElement("i");
+  p.style.left=Math.random()*100+"%";
+  p.style.animationDuration=(5+Math.random()*9)+"s";
+  p.style.animationDelay=(Math.random()*8)+"s";
+  p.style.opacity=.3+Math.random()*.7;
+  particles.appendChild(p);
+}
 
-        try {
-            const res = await fetch("/api/pair", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ number })
-            });
+const btn=document.getElementById("submitBtn");
+const phone=document.getElementById("phone");
+const errorBox=document.getElementById("error");
+const result=document.getElementById("result");
+const codeValue=document.getElementById("codeValue");
+const copyBtn=document.getElementById("copyBtn");
 
-            const data = await res.json();
+let pollTimer=null;
 
-            if (!res.ok) {
-                throw new Error(data.error || "Failed to get pairing code");
-            }
+function showError(message){
+  errorBox.textContent=message;
+  errorBox.classList.add("show");
+}
 
-            codeValue.textContent = data.code;
-            resultBox.classList.add("visible");
-        } catch (err) {
-            errorBox.textContent = err.message;
-            errorBox.classList.add("visible");
-        } finally {
-            btn.disabled = false;
-            btn.textContent = "Get pairing code";
-        }
+btn.addEventListener("click",async()=>{
+  const number=phone.value.replace(/\D/g,"");
+  errorBox.classList.remove("show");
+  result.classList.remove("show");
+  clearInterval(pollTimer);
+
+  if(number.length<7||number.length>15){
+    showError("Enter a valid phone number with country code.");
+    return;
+  }
+
+  btn.disabled=true;
+  btn.textContent="STARTING CONNECTION...";
+
+  try{
+    const response=await fetch("/start-pair",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({number})
     });
+    const data=await response.json();
 
-    // Copy the pairing code.
-    copyBtn.addEventListener("click", async () => {
-        const code = codeValue.textContent;
-        if (!code || code === "— — — — — — — —") return;
-        try {
-            await navigator.clipboard.writeText(code);
-            copyFeedback.classList.add("visible");
-            setTimeout(() => copyFeedback.classList.remove("visible"), 2000);
-        } catch (err) {
-            // Fallback: allow manual selection and copy.
-            const range = document.createRange();
-            range.selectNode(codeValue);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
-            document.execCommand("copy");
-            copyFeedback.classList.add("visible");
-            setTimeout(() => copyFeedback.classList.remove("visible"), 2000);
+    if(!response.ok||!data.ok){
+      throw new Error(data.error||"Unable to start pairing.");
+    }
+
+    if(data.status==="already_connected"){
+      throw new Error("This WhatsApp account is already connected.");
+    }
+
+    btn.textContent="WAITING FOR WHATSAPP CODE...";
+
+    let attempts=0;
+    pollTimer=setInterval(async()=>{
+      attempts++;
+
+      try{
+        const response=await fetch("/get-code?number="+encodeURIComponent(number));
+        const data=await response.json();
+
+        if(data.code){
+          clearInterval(pollTimer);
+          codeValue.textContent=data.code;
+          result.classList.add("show");
+          btn.disabled=false;
+          btn.textContent="GENERATE PAIRING CODE";
+        }else if(data.error){
+          clearInterval(pollTimer);
+          showError(data.error);
+          btn.disabled=false;
+          btn.textContent="GENERATE PAIRING CODE";
+        }else if(data.status==="already_connected"){
+          clearInterval(pollTimer);
+          showError("This WhatsApp account is already connected.");
+          btn.disabled=false;
+          btn.textContent="GENERATE PAIRING CODE";
+        }else if(attempts>=50){
+          clearInterval(pollTimer);
+          showError("The request timed out. Please try again.");
+          btn.disabled=false;
+          btn.textContent="GENERATE PAIRING CODE";
         }
-    });
-  </script>
+      }catch(e){
+        if(attempts>=50){
+          clearInterval(pollTimer);
+          showError("Unable to check pairing status. Try again.");
+          btn.disabled=false;
+          btn.textContent="GENERATE PAIRING CODE";
+        }
+      }
+    },1500);
+
+  }catch(error){
+    showError(error.message);
+    btn.disabled=false;
+    btn.textContent="GENERATE PAIRING CODE";
+  }
+});
+
+copyBtn.addEventListener("click",async()=>{
+  const code=codeValue.textContent;
+  try{
+    await navigator.clipboard.writeText(code);
+    copyBtn.textContent="COPIED!";
+    setTimeout(()=>copyBtn.textContent="COPY PAIRING CODE",1800);
+  }catch(e){
+    showError("Select and copy the code manually.");
+  }
+});
+</script>
 </body>
 </html>
