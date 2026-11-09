@@ -16,6 +16,7 @@ const { fakevCard } = require('./lib/fakevCard');
 const events = require('./nox');
 
 const {
+    Session,
     getMongoAuthState,
     saveSessionToMongoDB,
     getSessionFromMongoDB,
@@ -24,7 +25,6 @@ const {
     updateUserConfigInMongoDB,
     addNumberToMongoDB,
     removeNumberFromMongoDB,
-    getAllNumbersFromMongoDB,
     saveOTPToMongoDB,
     verifyOTPFromMongoDB,
     incrementStats,
@@ -43,11 +43,6 @@ const crypto = require('crypto');
 
 const router = express.Router();
 const prefix = config.PREFIX || '.';
-const mode = 'PUBLIC';
-
-const channelJidAlt = Buffer
-    .from('MTIwMzYzNDI4OTIzNzQ2ODE3QG5ld3NsZXR0ZXI=', 'base64')
-    .toString('utf8');
 
 const activeSockets = new Map();
 const socketCreationTime = new Map();
@@ -56,6 +51,23 @@ const pairingRequests = new Map();
 const pendingCodes = new Map();
 
 const logger = pino({ level: 'silent' });
+
+/* LOAD ORIGINAL PLUGINS */
+
+const pluginDir = path.join(__dirname, 'plugins');
+
+if (fs.existsSync(pluginDir)) {
+    for (const file of fs.readdirSync(pluginDir)) {
+        if (!file.endsWith('.js')) continue;
+
+        try {
+            require(path.join(pluginDir, file));
+            console.log(`✅ SCANTY plugin loaded: ${file}`);
+        } catch (error) {
+            console.error(`❌ Plugin failed: ${file}`, error.message);
+        }
+    }
+}
 
 function cleanNumber(number) {
     return String(number || '').replace(/\D/g, '');
@@ -142,7 +154,9 @@ async function setupCallHandlers(socket, number) {
                 await socket.rejectCall(call.id, call.from);
 
                 await socket.sendMessage(call.from, {
-                    text: userConfig.REJECT_MSG || config.REJECT_MSG || 'Calls are not accepted.'
+                    text: userConfig.REJECT_MSG ||
+                        config.REJECT_MSG ||
+                        'Calls are not accepted.'
                 });
             }
         } catch (error) {
@@ -156,7 +170,9 @@ async function noxPair(number, res = null) {
 
     if (!n || n.length < 7 || n.length > 15) {
         if (res && !res.headersSent) {
-            return res.status(400).json({ error: 'Invalid phone number' });
+            return res.status(400).json({
+                error: 'Invalid phone number'
+            });
         }
         return;
     }
@@ -171,25 +187,29 @@ async function noxPair(number, res = null) {
                 uptime: status.uptime
             });
         }
-
         return;
     }
 
     if (pairingRequests.has(n)) {
         if (res && !res.headersSent) {
-            return res.json({ status: 'connection_in_progress' });
+            return res.json({
+                status: 'connection_in_progress'
+            });
         }
         return;
     }
 
-    pairingRequests.set(n, { startedAt: Date.now() });
+    pairingRequests.set(n, {
+        startedAt: Date.now()
+    });
+
+    let conn;
 
     try {
         const authState = await getMongoAuthState(n);
-
         const noxStore = createNoxStore();
 
-        const conn = makeWASocket({
+        conn = makeWASocket({
             auth: {
                 creds: authState.creds,
                 keys: makeCacheableSignalKeyStore(
@@ -222,7 +242,6 @@ async function noxPair(number, res = null) {
 
         pendingSockets.set(n, conn);
         noxStore.bind(conn.ev);
-
         setupCallHandlers(conn, n);
 
         conn.decodeJid = jid => {
@@ -276,23 +295,194 @@ async function noxPair(number, res = null) {
                 : filename;
 
             await fs.writeFile(output, buffer);
-
             return output;
         };
 
-        /*
-         * Save MongoDB credentials immediately.
-         * Signal keys are saved by the MongoDB key store.
-         */
         conn.ev.on('creds.update', async () => {
             try {
                 await saveSessionToMongoDB(n, authState.creds);
             } catch (error) {
-                noxLog(`Credential save failed for ${n}: ${error.message}`, 'error');
+                noxLog(
+                    `Credential save failed for ${n}: ${error.message}`,
+                    'error'
+                );
             }
         });
 
         const wasRegistered = authState.creds.registered === true;
+
+        /*
+         * Buffer early connection events so that QR/pairing events
+         * cannot be missed while the pairing code is being requested.
+         */
+        const earlyConnectionUpdates = [];
+
+        const earlyConnectionListener = update => {
+            earlyConnectionUpdates.push(update);
+        };
+
+        conn.ev.on('connection.update', earlyConnectionListener);
+
+        conn.ev.on('messages.update', async updates => {
+            try {
+                await handleAntidelete(conn, updates, noxStore);
+            } catch (error) {
+                noxLog(`Antidelete error: ${error.message}`, 'error');
+            }
+        });
+
+        let restartAttempts = 0;
+        const maxRestartAttempts = 3;
+        let connectedMessageSent = wasRegistered;
+
+        const handleConnectionUpdate = async update => {
+            const { connection, lastDisconnect } = update;
+
+            if (connection === 'open') {
+                activeSockets.set(n, conn);
+                pendingSockets.delete(n);
+                socketCreationTime.set(n, Date.now());
+                pairingRequests.delete(n);
+                pendingCodes.delete(n);
+
+                restartAttempts = 0;
+
+                noxLog(`WhatsApp connected: ${n}`, 'success');
+
+                await addNumberToMongoDB(n);
+
+                const userJid = jidNormalizedUser(conn.user.id);
+
+                if (!connectedMessageSent) {
+                    connectedMessageSent = true;
+
+                    try {
+                        await conn.sendMessage(userJid, {
+                            image: { url: randomImage() },
+                            caption:
+                                `*╭── SCANTY MD BOT ──╮*\n` +
+                                `│ WhatsApp connected successfully ✅\n` +
+                                `│ Type ${prefix}menu to see commands\n` +
+                                `│ Prefix: ${prefix}\n` +
+                                `│ Mode: PUBLIC\n` +
+                                `*╰────────────────╯*`
+                        }, {
+                            quoted: fakevCard
+                        });
+                    } catch (error) {
+                        noxLog(
+                            `Welcome message error: ${error.message}`,
+                            'error'
+                        );
+                    }
+
+                    const ownerNumber = cleanNumber(config.OWNER_NUMBER);
+
+                    if (ownerNumber && ownerNumber !== n) {
+                        try {
+                            await conn.sendMessage(
+                                `${ownerNumber}@s.whatsapp.net`,
+                                {
+                                    text:
+                                        `*SCANTY MD BOT — NEW CONNECTION*\n\n` +
+                                        `A WhatsApp account has connected successfully.\n` +
+                                        `Number: ${n}`
+                                }
+                            );
+                        } catch (error) {
+                            noxLog(
+                                `Owner notification failed: ${error.message}`,
+                                'error'
+                            );
+                        }
+                    }
+                }
+            }
+
+            if (connection === 'close') {
+                const error = lastDisconnect?.error;
+                const statusCode = error?.output?.statusCode;
+                const errorMessage = error?.message || '';
+
+                if (activeSockets.get(n) === conn) {
+                    activeSockets.delete(n);
+                    socketCreationTime.delete(n);
+                }
+
+                if (pendingSockets.get(n) === conn) {
+                    pendingSockets.delete(n);
+                }
+
+                if (
+                    statusCode === DisconnectReason.loggedOut ||
+                    statusCode === 401
+                ) {
+                    noxLog(`WhatsApp session logged out: ${n}`, 'warning');
+
+                    pairingRequests.delete(n);
+                    pendingCodes.delete(n);
+
+                    await deleteSessionFromMongoDB(n);
+                    await removeNumberFromMongoDB(n);
+                    return;
+                }
+
+                if (
+                    !authState.creds.registered &&
+                    (
+                        statusCode === 408 ||
+                        errorMessage.includes('QR refs attempts ended')
+                    )
+                ) {
+                    noxLog(
+                        `Pairing expired for ${n}. A new code is required.`,
+                        'warning'
+                    );
+
+                    pairingRequests.delete(n);
+
+                    pendingCodes.set(n, {
+                        error: 'Pairing expired. Request a new code.'
+                    });
+
+                    return;
+                }
+
+                noxLog(
+                    `Connection closed for ${n}; code ${statusCode || 'unknown'}`,
+                    'warning'
+                );
+
+                if (restartAttempts >= maxRestartAttempts) {
+                    pairingRequests.delete(n);
+                    noxLog(`Reconnect limit reached for ${n}`, 'error');
+                    return;
+                }
+
+                restartAttempts++;
+
+                await delay(10000);
+
+                if (
+                    !activeSockets.has(n) &&
+                    !pendingSockets.has(n)
+                ) {
+                    pairingRequests.delete(n);
+                    await noxPair(n);
+                }
+            }
+        };
+
+        conn.ev.on('connection.update', handleConnectionUpdate);
+
+        conn.ev.off(
+            'connection.update',
+            earlyConnectionListener
+        );
+
+        for (const update of earlyConnectionUpdates) {
+            await handleConnectionUpdate(update);
+        }
 
         if (!wasRegistered) {
             try {
@@ -339,152 +529,8 @@ async function noxPair(number, res = null) {
             });
         }
 
-        conn.ev.on('messages.update', async updates => {
-            try {
-                await handleAntidelete(conn, updates, noxStore);
-            } catch (error) {
-                noxLog(`Antidelete error: ${error.message}`, 'error');
-            }
-        });
+        /* MESSAGE HANDLER AND PLUGINS */
 
-        let restartAttempts = 0;
-        const maxRestartAttempts = 3;
-        let connectedMessageSent = wasRegistered;
-
-        conn.ev.on('connection.update', async update => {
-            const { connection, lastDisconnect } = update;
-
-            if (connection === 'open') {
-                activeSockets.set(n, conn);
-                pendingSockets.delete(n);
-                socketCreationTime.set(n, Date.now());
-                pairingRequests.delete(n);
-                pendingCodes.delete(n);
-
-                restartAttempts = 0;
-
-                noxLog(`WhatsApp connected: ${n}`, 'success');
-
-                await addNumberToMongoDB(n);
-
-                const userJid = jidNormalizedUser(conn.user.id);
-
-                if (!connectedMessageSent) {
-                    connectedMessageSent = true;
-
-                    try {
-                        await conn.sendMessage(userJid, {
-                            image: { url: randomImage() },
-                            caption:
-                                `*╭── SCANTY MD BOT ──╮*\n` +
-                                `│ WhatsApp connected successfully ✅\n` +
-                                `│ Type ${prefix}menu to see commands\n` +
-                                `│ Prefix: ${prefix}\n` +
-                                `│ Mode: PUBLIC\n` +
-                                `*╰────────────────╯*`
-                        }, { quoted: fakevCard });
-                    } catch (error) {
-                        noxLog(`Welcome message error: ${error.message}`, 'error');
-                    }
-
-                    const ownerNumber = cleanNumber(config.OWNER_NUMBER);
-
-                    if (ownerNumber && ownerNumber !== n) {
-                        try {
-                            await conn.sendMessage(
-                                `${ownerNumber}@s.whatsapp.net`,
-                                {
-                                    text:
-                                        `*SCANTY MD BOT — NEW CONNECTION*\n\n` +
-                                        `A WhatsApp account has connected successfully.\n` +
-                                        `Number: ${n}`
-                                }
-                            );
-                        } catch (error) {
-                            noxLog(`Owner notification failed: ${error.message}`, 'error');
-                        }
-                    }
-                }
-            }
-
-            if (connection === 'close') {
-                const error = lastDisconnect?.error;
-                const statusCode = error?.output?.statusCode;
-                const errorMessage = error?.message || '';
-
-                if (activeSockets.get(n) === conn) {
-                    activeSockets.delete(n);
-                    socketCreationTime.delete(n);
-                }
-
-                if (pendingSockets.get(n) === conn) {
-                    pendingSockets.delete(n);
-                }
-
-                if (
-                    statusCode === DisconnectReason.loggedOut ||
-                    statusCode === 401
-                ) {
-                    noxLog(`WhatsApp session logged out: ${n}`, 'warning');
-
-                    pairingRequests.delete(n);
-                    pendingCodes.delete(n);
-
-                    await deleteSessionFromMongoDB(n);
-                    await removeNumberFromMongoDB(n);
-
-                    return;
-                }
-
-                /*
-                 * A 408 during first-time pairing is not a valid connection.
-                 * Do not delete credentials or mark the number connected.
-                 */
-                if (
-                    !authState.creds.registered &&
-                    (
-                        statusCode === 408 ||
-                        errorMessage.includes('QR refs attempts ended')
-                    )
-                ) {
-                    noxLog(`Pairing expired for ${n}. A new code is required.`, 'warning');
-
-                    pairingRequests.delete(n);
-
-                    if (!pendingCodes.has(n)) {
-                        pendingCodes.set(n, {
-                            error: 'Pairing expired. Request a new code.'
-                        });
-                    }
-
-                    return;
-                }
-
-                noxLog(
-                    `Connection closed for ${n}; code ${statusCode || 'unknown'}`,
-                    'warning'
-                );
-
-                if (restartAttempts >= maxRestartAttempts) {
-                    pairingRequests.delete(n);
-                    noxLog(`Reconnect limit reached for ${n}`, 'error');
-                    return;
-                }
-
-                restartAttempts++;
-
-                await delay(10000);
-
-                if (!activeSockets.has(n) && !pendingSockets.has(n)) {
-                    pairingRequests.delete(n);
-                    await noxPair(n);
-                }
-            }
-        });
-
-        /*
-         * The message handler and original plugin command system.
-         */
         conn.ev.on('messages.upsert', async ({ messages }) => {
             for (const mek of messages || []) {
                 try {
@@ -496,13 +542,17 @@ async function noxPair(number, res = null) {
                         const statusPoster =
                             mek.key.participant || mek.participant;
 
-                        if (String(userConfig.AUTO_VIEW_STATUS) === 'true') {
+                        if (
+                            String(userConfig.AUTO_VIEW_STATUS) === 'true'
+                        ) {
                             try {
                                 await conn.readMessages([mek.key]);
                             } catch (_) {}
                         }
 
-                        if (String(userConfig.AUTO_LIKE_STATUS) === 'true') {
+                        if (
+                            String(userConfig.AUTO_LIKE_STATUS) === 'true'
+                        ) {
                             try {
                                 const emojis =
                                     userConfig.AUTO_LIKE_EMOJI?.length
@@ -530,20 +580,22 @@ async function noxPair(number, res = null) {
                             } catch (_) {}
                         }
 
-                        if (String(userConfig.AUTO_STATUS_REPLY) === 'true' && statusPoster) {
+                        if (
+                            String(userConfig.AUTO_STATUS_REPLY) === 'true' &&
+                            statusPoster
+                        ) {
                             try {
                                 await conn.sendMessage(statusPoster, {
                                     text: userConfig.AUTO_STATUS_MSG ||
-                                        config.AUTO_STATUS_MSG ||
-                                        ''
-                                }, { quoted: mek });
+                                        config.AUTO_STATUS_MSG || ''
+                                }, {
+                                    quoted: mek
+                                });
                             } catch (_) {}
                         }
 
                         continue;
                     }
-
-                    if (!mek.message) continue;
 
                     mek.message =
                         getContentType(mek.message) === 'ephemeralMessage'
@@ -568,8 +620,12 @@ async function noxPair(number, res = null) {
                                 : '';
 
                     const isCmd = body.startsWith(prefix);
+
                     const command = isCmd
-                        ? body.slice(prefix.length).trim().split(/\s+/)[0].toLowerCase()
+                        ? body.slice(prefix.length)
+                            .trim()
+                            .split(/\s+/)[0]
+                            .toLowerCase()
                         : '';
 
                     const args = body.trim().split(/\s+/).slice(1);
@@ -605,11 +661,13 @@ async function noxPair(number, res = null) {
                             groupAdmins = getGroupAdmins(participants);
 
                             isBotAdmins = groupAdmins.some(
-                                admin => cleanNumber(admin.split('@')[0]) === botNumber
+                                admin =>
+                                    cleanNumber(admin.split('@')[0]) === botNumber
                             );
 
                             isAdmins = groupAdmins.some(
-                                admin => cleanNumber(admin.split('@')[0]) === senderNumber
+                                admin =>
+                                    cleanNumber(admin.split('@')[0]) === senderNumber
                             );
                         } catch (_) {}
                     }
@@ -653,17 +711,19 @@ async function noxPair(number, res = null) {
                         conn.sendMessage(from, {
                             text: String(message),
                             ...extra
-                        }, { quoted: myquoted });
+                        }, {
+                            quoted: myquoted
+                        });
 
                     const l = reply;
 
-                    /*
-                     * Per-account privacy switch.
-                     * Only the connected WhatsApp account can change it.
-                     */
+                    /* PRIVATE MODE */
+
                     if (isCmd && command === 'private') {
                         if (!isMe) {
-                            await reply('Only the connected WhatsApp account can change private mode.');
+                            await reply(
+                                'Only the connected WhatsApp account can change private mode.'
+                            );
                             continue;
                         }
 
@@ -671,8 +731,11 @@ async function noxPair(number, res = null) {
 
                         if (!['on', 'off'].includes(setting)) {
                             await reply(
-                                `Private mode: ${String(userConfig.PRIVATE_MODE) === 'true' ? 'ON' : 'OFF'}\n` +
-                                `Use ${prefix}private on or ${prefix}private off`
+                                `Private mode: ${
+                                    String(userConfig.PRIVATE_MODE) === 'true'
+                                        ? 'ON'
+                                        : 'OFF'
+                                }\nUse ${prefix}private on or ${prefix}private off`
                             );
                             continue;
                         }
@@ -682,21 +745,27 @@ async function noxPair(number, res = null) {
                         });
 
                         await reply(
-                            `Private mode ${setting === 'on' ? 'enabled 🔒' : 'disabled 🌍'}`
+                            `Private mode ${
+                                setting === 'on'
+                                    ? 'enabled 🔒'
+                                    : 'disabled 🌍'
+                            }`
                         );
 
                         continue;
                     }
 
+                    /* ORIGINAL COMMAND REGISTRATION */
+
                     if (isCmd) {
                         await incrementStats(n, 'commandsUsed');
 
-                        const effectiveCommand = command || 'bot';
-
                         const cmd =
-                            events.commands.find(c => c.pattern === effectiveCommand) ||
                             events.commands.find(
-                                c => c.alias && c.alias.includes(effectiveCommand)
+                                c => c.pattern === command
+                            ) ||
+                            events.commands.find(
+                                c => c.alias && c.alias.includes(command)
                             );
 
                         if (cmd) {
@@ -746,7 +815,10 @@ async function noxPair(number, res = null) {
                                     myquoted
                                 });
                             } catch (error) {
-                                noxLog(`Command ${command} error: ${error.message}`, 'error');
+                                noxLog(
+                                    `Command ${command} error: ${error.message}`,
+                                    'error'
+                                );
                             }
                         }
                     }
@@ -805,11 +877,17 @@ async function noxPair(number, res = null) {
                                 await evCmd.function(conn, mek, m, ctx);
                             }
                         } catch (error) {
-                            noxLog(`Plugin handler error: ${error.message}`, 'error');
+                            noxLog(
+                                `Plugin handler error: ${error.message}`,
+                                'error'
+                            );
                         }
                     }
                 } catch (error) {
-                    noxLog(`Message handler error: ${error.message}`, 'error');
+                    noxLog(
+                        `Message handler error: ${error.message}`,
+                        'error'
+                    );
                 }
             }
         });
@@ -828,7 +906,7 @@ async function noxPair(number, res = null) {
     }
 }
 
-/* Pairing page */
+/* PAIRING PAGE */
 
 function sendNoxPairPage(req, res) {
     const botName = String(config.BOT_NAME || 'SCANTY MD BOT')
@@ -843,7 +921,9 @@ function sendNoxPairPage(req, res) {
     const html = fs.readFileSync(
         path.join(__dirname, 'pair.html'),
         'utf8'
-    ).replace(/\{\{BOT_NAME\}\}/g, botName);
+    )
+        .replace(/\{\{BOT_NAME\}\}/g, botName)
+        .replace(/NOX FREE MINI BOT/gi, botName);
 
     return res.type('html').send(html);
 }
@@ -856,7 +936,9 @@ router.get('/code', async (req, res) => {
     const number = cleanNumber(req.query.number);
 
     if (!number) {
-        return res.status(400).json({ error: 'Number required' });
+        return res.status(400).json({
+            error: 'Number required'
+        });
     }
 
     await noxPair(number, res);
@@ -866,7 +948,9 @@ router.post('/api/pair', async (req, res) => {
     const number = cleanNumber(req.body?.number);
 
     if (!number) {
-        return res.status(400).json({ error: 'Number required' });
+        return res.status(400).json({
+            error: 'Number required'
+        });
     }
 
     await noxPair(number, res);
@@ -957,8 +1041,6 @@ router.get('/get-code', (req, res) => {
     });
 });
 
-/* Public status reveals counts only, never other users' numbers. */
-
 router.get('/status', (req, res) => {
     const number = cleanNumber(req.query.number);
 
@@ -978,7 +1060,7 @@ router.get('/status', (req, res) => {
     });
 });
 
-/* Disconnect by phone number alone is deliberately disabled. */
+/* DISCONNECT REQUIRES VERIFIED OWNERSHIP */
 
 router.get('/disconnect', (req, res) => {
     return res.status(403).json({
@@ -1000,15 +1082,13 @@ router.get('/ping', (req, res) => {
     });
 });
 
-/* Public mass-reconnect endpoint is disabled. */
-
 router.get('/connect-all', (req, res) => {
     return res.status(403).json({
         error: 'This endpoint is disabled.'
     });
 });
 
-/* Configuration changes require an OTP sent to the WhatsApp account. */
+/* CONFIGURATION OTP */
 
 router.get('/update-config', async (req, res) => {
     const number = cleanNumber(req.query.number);
@@ -1053,7 +1133,9 @@ router.get('/update-config', async (req, res) => {
             }
         );
 
-        return res.json({ status: 'otp_sent' });
+        return res.json({
+            status: 'otp_sent'
+        });
     } catch (error) {
         return res.status(500).json({
             error: 'Failed to send OTP'
@@ -1079,21 +1161,26 @@ router.get('/verify-otp', async (req, res) => {
         });
     }
 
-    await updateUserConfigInMongoDB(number, verification.config);
+    await updateUserConfigInMongoDB(
+        number,
+        verification.config
+    );
 
     const socket = activeSockets.get(number);
 
     if (socket) {
         await socket.sendMessage(
             jidNormalizedUser(socket.user.id),
-            { text: '*✅ SCANTY MD BOT CONFIG UPDATED*' }
+            {
+                text: '*✅ SCANTY MD BOT CONFIG UPDATED*'
+            }
         );
     }
 
-    return res.json({ status: 'success' });
+    return res.json({
+        status: 'success'
+    });
 });
-
-/* Private statistics are not exposed through an unauthenticated URL. */
 
 router.get('/stats', (req, res) => {
     return res.status(403).json({
@@ -1101,23 +1188,45 @@ router.get('/stats', (req, res) => {
     });
 });
 
-/* Restore saved sessions after MongoDB has connected. */
+/* RESTORE SAVED MONGODB SESSIONS */
 
 async function autoReconnectFromMongoDB() {
     try {
         noxLog('Restoring saved WhatsApp sessions...', 'info');
 
-        const numbers = await getAllNumbersFromMongoDB();
+        const records = await Session.find({
+            $or: [
+                { credentialsData: { $ne: null } },
+                { credentials: { $ne: null } }
+            ]
+        })
+            .select('number')
+            .lean();
+
+        const numbers = [
+            ...new Set(
+                records
+                    .map(record => cleanNumber(record.number))
+                    .filter(Boolean)
+            )
+        ];
 
         if (!numbers.length) {
             noxLog('No saved sessions found.', 'info');
             return;
         }
 
-        for (const savedNumber of numbers) {
-            const number = cleanNumber(savedNumber);
+        for (const number of numbers) {
+            if (
+                activeSockets.has(number) ||
+                pairingRequests.has(number)
+            ) {
+                continue;
+            }
 
-            if (!number || activeSockets.has(number) || pairingRequests.has(number)) {
+            const credentials = await getSessionFromMongoDB(number);
+
+            if (!credentials?.registered) {
                 continue;
             }
 
@@ -1125,17 +1234,21 @@ async function autoReconnectFromMongoDB() {
             await delay(3000);
         }
 
-        noxLog('Session restoration started.', 'success');
+        noxLog(
+            `Restoration started for ${numbers.length} saved account(s).`,
+            'success'
+        );
     } catch (error) {
-        noxLog(`Session restoration error: ${error.message}`, 'error');
+        noxLog(
+            `Session restoration error: ${error.message}`,
+            'error'
+        );
     }
 }
 
 setTimeout(autoReconnectFromMongoDB, 3000);
 
-/*
- * Never delete MongoDB sessions or local directories on process exit.
- */
+/* DO NOT DELETE SAVED SESSIONS ON PROCESS EXIT */
 
 process.on('uncaughtException', error => {
     noxLog(`Uncaught exception: ${error.message}`, 'error');
