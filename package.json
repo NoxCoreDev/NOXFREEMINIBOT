@@ -1,9 +1,9 @@
 {
-  "name": "nox-free-mini-bot",
+  "name": "scanty-mini-bot",
   "version": "1.0.0",
-  "description": "NOX FREE MINI BOT — WhatsApp pairing-code bot with MongoDB sessions",
+  "description": "SCANTY MINI BOT — WhatsApp pairing-code bot with MongoDB sessions",
   "main": "index.js",
-  "author": "NOX BOTZ INC",
+  "author": "SCANTY BOTZ INC",
   "engines": {
     "node": "24.x"
   },
