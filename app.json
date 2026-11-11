@@ -1,8 +1,8 @@
 {
-  "name": "NOX FREE MINI BOT",
-  "description": "NOX FREE MINI BOT — WhatsApp mini bot web multi-device made by 🝛꯭𝐍𝚯𝐗 𝚯𝐅𝐅𝚰𝐂𝐈𝚫𝐋",
+  "name": "SCANTY MINI BOT",
+  "description": "SCANTY MINI BOT — WhatsApp mini bot web multi-device made by 🝛꯭𝐍𝚯𝐗 𝚯𝐅𝐅𝚰𝐂𝐈𝚫𝐋",
   "logo": "https://files.catbox.moe/7euvhs.jpg",
-  "keywords": ["Nox", "whatsapp-bot", "baileys", "free-bot"],
+  "keywords": ["scanty", "whatsapp-bot", "baileys", "free-bot"],
   "success_url": "/",
   "stack": "container",
   "env": {
@@ -14,7 +14,7 @@
     "BOT_NAME": {
       "description": "Display name used by the bot and pairing page.",
       "required": false,
-      "value": "NOX FREE MINI BOT"
+      "value": "SCANTY MINI BOT"
     },
     "OWNER_NUMBER": {
       "description": "Owner WhatsApp number with country code.",
